@@ -1,22 +1,18 @@
 const APIROOT= 'http://api.weather.gov/';
 const TEXASID = 'TX';
 
+let CONTAINER = document.getElementById('container'); 
 let arrCities = [];
 let texasAlerts;
 
-function getWeatherAlerts() {
-    let xhr = new XMLHttpRequest();
-    xhr.open('GET', APIROOT + 'alerts/active/area/' + TEXASID);
-    // xhr.setRequestHeader('User-Agent', '(TyphonNWSAlertApp, cm7152@nationalemr.us)');
-    xhr.send();
-    xhr.addEventListener('load', () => {
-        texasAlerts = JSON.parse(xhr.responseText);
-        main();
-    });
-}
 
-// Required:    elementType (string)
-// Optional:    text        (string)
+// Received an object with the below parameters and parses them
+// to create an element of desired type.
+// Required:    
+//              elementType (string)
+//              text        (string)
+//                  - pass an empty string if none is required for element at creation time.
+// Optional:    
 //              intro       (string)
 //              attribute   (object {string, string})
 function generateElement(params) {
@@ -30,33 +26,34 @@ function generateElement(params) {
     return element;
 }
 
+// Used in conjunction with Array.prototype.filter() method to create an
+// array of unique values.
 function uniqueArrayValues(value, index, array) {
     return array.indexOf(value) === index;
+}
+
+function handleFilterChange() {
+    let value = document.getElementById('cityList').value;
+    let totalAlerts = CONTAINER.childElementCount;
+    for(let i = 0; i < totalAlerts; i++) {
+        let wrapper = document.getElementById(`wrapper${i}`);
+        wrapper.style.display = '';
+    }
+
+    if(!(value == 'Default')) {
+        for(let i = 0; i < totalAlerts; i++) {
+            let wrapper = document.getElementById(`wrapper${i}`);
+            if(!(wrapper.children[1].innerText.includes(value))) {
+                wrapper.style.display = 'none';
+            }
+        }
+    }
 }
 
 function buildArrayCities(cities) {
     cities.split(';').forEach(element => {
         arrCities.push(element.trim());
     });
-}
-
-function handleFilterChange() {
-    let value = document.getElementById('cityList').value;
-    let arrAreasAffected = document.getElementsByClassName('areasAffected');
-    console.log('Filter changed to: ' + value);
-    for(let i = 0; i < arrAreasAffected.Length; i++) {
-        arrAreasAffected[i].parentElement.style.display = '';
-    }
-
-    if(!(value == 'Default')) {
-        console.log('Value is not set to "Default"');
-        for(let i = 0; i < arrAreasAffected.Length; i++) {
-            if(arrAreasAffected[i].innerText.includes(value)) {
-                arrAreasAffected[i].parentElement.style.display = 'none';
-            }
-        }
-    }
-    return
 }
 
 function buildCityFilterList() {
@@ -75,13 +72,6 @@ function buildCityFilterList() {
 
 function populateData() {
     let data = texasAlerts.features;
-    let container = generateElement({
-        elementType: 'div',
-        text: '',
-        setAttributes: {
-            id: 'container'
-        }
-    });
     for(let i = 0; i < data.length; i++) {
         let cities = data[i].properties.areaDesc;
         let wrapper = generateElement({
@@ -123,22 +113,40 @@ function populateData() {
             }
         });
 
-        // cities is currently a string of cities/counties ';' delimited.
         buildArrayCities(cities);
         wrapper.appendChild(headline);
         wrapper.appendChild(divAreasAffected);
         wrapper.appendChild(divDescription);
         wrapper.appendChild(divDuration);
-        container.appendChild(wrapper);
-        document.getElementById('body').appendChild(container);
+        CONTAINER.appendChild(wrapper);
+    }
+    buildCityFilterList();
+}
+
+function getWeatherAlerts() {
+    let xhr = new XMLHttpRequest();
+    xhr.open('GET', APIROOT + 'alerts/active/area/' + TEXASID);
+    // xhr.setRequestHeader('User-Agent', '(TyphonNWSAlertApp, cm7152@nationalemr.us)');
+    xhr.send();
+    xhr.addEventListener('load', () => {
+        texasAlerts = JSON.parse(xhr.responseText);
+        populateData();
+    });
+}
+function cleanup() {
+    if(CONTAINER.childElementCount == 0) {
+        return;
+    }
+    let count = CONTAINER.childElementCount;
+    for(let i = 0; i < count; i++) {
+        CONTAINER.children[i].remove();
     }
 }
 
 function main() {
-    populateData();
-    buildCityFilterList();
-    console.log(texasAlerts.features);
-    console.log(arrCities);
+    console.log('Main called');
+    cleanup();
+    getWeatherAlerts();
 }
 
-getWeatherAlerts();
+setInterval(main, 5000);
